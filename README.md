@@ -1,16 +1,60 @@
-# eBPF-Powered Autonomous Incident Detection & Self-Healing Pipeline 
-A low-overhead, kernel-space observability and autonomous incident remediation engine built using **eBPF (Extended Berkeley Packet Filter)** and **Python (BCC)**.
-## Overview
-Traditional microservice observability relies heavily on user-space sidecar proxies, which introduce significant latency and CPU/memory overhead. This pipeline attaches directly to Linux tracepoints (`sys_enter_execve`), streaming structured execution events via a high-performance BPF perf ring buffer to detect unauthorized workloads and autonomously dispatch `SIGKILL` remediation signals in real time.
-##Architecture
-1. **eBPF Kernel Probe (`collector.py`):** Hooks into the `syscalls:sys_enter_execve` tracepoint to capture binary execution metadata directly from kernel space.
-2. **Ring Buffer Pipeline:** Passes structured C structs (`pid`, `uid`, `comm`, `filename`) to user space via BPF perf event maps.
-3. **Autonomous Engine (`engine.py`):** Compares process execution paths against a baseline and terminates anomalous or unauthorized processes immediately using kernel-level signals.
-## Prerequisites
-- Linux Kernel 5.x / 6.x (or WSL 2 on Windows 11)
-- BCC Toolchain (`bpfcc-tools`,`python3-bpfcc`,`libbpf-dev`)
-- Python 3.10+
-## Quickstart
-### 1. Run the Telemetry Collector
-```bash
-sudo python3 collector.py
+
+#  eBPF-Powered Autonomous Incident Detection & Self-Healing Pipeline
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Linux Kernel](https://img.shields.io/badge/Linux_Kernel-5.x_%7C_6.x-blue.svg)](https://kernel.org)
+[![eBPF](https://img.shields.io/badge/Technology-eBPF_%2F_BCC-orange.svg)](https://ebpf.io/)
+[![Platform](https://img.shields.io/badge/Platform-WSL2_%2F_Ubuntu-purple.svg)](https://ubuntu.com/)
+
+A high-performance, kernel-space observability and autonomous incident remediation pipeline built using **eBPF (Extended Berkeley Packet Filter)** and **Python (BCC Toolchain)**.
+
+---
+
+##  Live Autonomous Self-Healing Demo
+
+Below is the live execution trace showing real-time kernel telemetry capture on the left and automated process mitigation via `SIGKILL` on the right:
+
+![Autonomous Self-Healing Demo](demo.png)
+
+---
+
+##  Problem Statement: Sidecar Overhead in Cloud Observability
+
+Traditional container and microservice observability platforms rely heavily on user-space sidecar proxies (e.g., Envoy, Prometheus node exporters, runtime agents). While functional, sidecars introduce critical operational bottlenecks:
+
+- **Resource Inefficiency:** User-space agents duplicate memory and CPU overhead across every container.
+- **Context Switching Latency:** Copying execution data back and forth across user-kernel boundaries introduces scheduling delays.
+- **Security Vulnerability:** If a containerized workload is compromised at the application layer, user-space sidecars can be bypassed or disabled.
+
+---
+
+##  Solution: Kernel-Native Observability & Auto-Remediation
+
+This architecture hooks directly into the Linux Operating System's kernel execution path using **eBPF tracepoints**, establishing a zero-sidecar, sub-millisecond telemetry and protection layer.
+
+```text
++-------------------------------------------------------------------------+
+|                              USER SPACE                                 |
+|                                                                         |
+|  [ Normal Apps: date, ls, uname ]    [ Malicious Workload: rogue.py ]   |
+|                                                    │                    |
+|                                                    ▼                    |
+|                         engine.py (Remediation Brain)                   |
+|                         ├─ Whitelist Policy Verification                |
+|                         └─ Dispatches Real-Time SIGKILL ──────┐         |
++───────────────────────────────────────────────────────────────┼─────────+
+|                             KERNEL SPACE                      │         |
+|                                                               │         |
+|  Linux Kernel Tracepoint (sys_enter_execve)                   │         |
+|        │                                                      │         |
+|        ▼                                                      ▼         |
+|  collector.py / C eBPF Probe  ──[Perf Ring Buffer]──► [Process Killed]  |
++-------------------------------------------------------------------------+
+
+## Repository Structure
+├── collector.py        # Raw eBPF telemetry collector hooked to sys_enter_execve
+├── engine.py           # Anomaly evaluator & autonomous SIGKILL remediation engine
+├── requirements.txt    # Python runtime dependencies (bcc)
+├── .gitignore          # Build & environment ignore rules
+├── LICENSE             # MIT Open Source License
+└── README.md           # Technical project documentation
